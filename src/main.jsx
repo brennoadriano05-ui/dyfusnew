@@ -6,7 +6,7 @@ import './pages.css';
 import './reader.css';
 import './logo.css';
 
-const logoPath = '/imagens/logo/logoof.png';
+import logoPath from '../imagens/logo/logoof.png';
 
 const versions = [
   { id: '251', label: 'DYFUS 2.51', name: 'Dofus Impact', tag: 'A ERA PRINCIPAL', status: 'ONLINE', players: '1.248', desc: 'A experiência completa, com progressão intensa, eventos semanais e uma economia viva.' },
