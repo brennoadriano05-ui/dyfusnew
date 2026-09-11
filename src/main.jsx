@@ -7,6 +7,11 @@ import './reader.css';
 import './logo.css';
 
 import logoPath from '../imagens/logo/logoof.png';
+import rankGeralImage from '../imagens/rank/rankgeral.jpg';
+import rankPvpImage from '../imagens/rank/rankpvp.png';
+import rankGuildaImage from '../imagens/rank/rankguilda.jpg';
+import rankSonhoImage from '../imagens/rank/ranksonho.jpg';
+import rankVotoImage from '../imagens/rank/rankvoto.jpg';
 
 const versions = [
   { id: '251', label: 'DYFUS 2.51', name: 'Dofus Impact', tag: 'A ERA PRINCIPAL', status: 'ONLINE', players: '1.248', desc: 'A experiência completa, com progressão intensa, eventos semanais e uma economia viva.' },
@@ -26,12 +31,23 @@ const products = [
   { name: '2.500 OGRINES', type: 'OGRINES', price: 'R$ 24,90', detail: 'Moeda oficial da loja Impact', icon: Sparkles }
 ];
 
+const rankBoards = {
+  GERAL: [['01', 'NexuS', '42.890'], ['02', 'Avelorn', '39.420'], ['03', 'Khal Drogo', '36.115'], ['04', 'Lunara', '33.870'], ['05', 'Mordred', '31.420'], ['06', 'Elyra', '29.760']],
+  PVP: [['01', 'Khal Drogo', '18.640'], ['02', 'NexuS', '17.920'], ['03', 'Lunara', '16.870'], ['04', 'Avelorn', '15.430'], ['05', 'Mordred', '14.980'], ['06', 'Elyra', '13.760']],
+  GUILDAS: [['01', 'Os Vaillants', '27.255'], ['02', 'Sakura', '21.969'], ['03', 'Impact Prime', '19.840'], ['04', 'Lendas', '18.420'], ['05', 'Ordem Solar', '16.910'], ['06', 'Aurora', '15.670']],
+  KOLIZEU: [['01', 'Avelorn', '12.890'], ['02', 'NexuS', '12.420'], ['03', 'Khal Drogo', '11.975'], ['04', 'Lunara', '10.860'], ['05', 'Mordred', '10.210'], ['06', 'Elyra', '9.740']]
+};
+const rankImages = { GERAL: rankGeralImage, PVP: rankPvpImage, GUILDAS: rankGuildaImage, KOLIZEU: rankSonhoImage, VOTO: rankVotoImage };
+
+const testAccount = { email: 'teste@dyfus.com', password: 'Impact@123' };
+
 function App() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState('home');
   const [activeVersion, setActiveVersion] = useState('251');
   const [menuOpen, setMenuOpen] = useState(false);
   const [modal, setModal] = useState(null);
+  const [loggedIn, setLoggedIn] = useState(false);
   const [toast, setToast] = useState('');
   const [liked, setLiked] = useState([]);
   const [selectedNews, setSelectedNews] = useState(null);
@@ -49,6 +65,10 @@ function App() {
   };
   const jump = (id) => {
     setMenuOpen(false);
+    if (id === 'vote' && !loggedIn) {
+      setModal('login');
+      return;
+    }
     if (id === 'home' || ['news', 'store', 'rank', 'vote', 'download'].includes(id)) {
       setPage(id === 'home' ? 'home' : id);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -88,7 +108,7 @@ function App() {
       <section className="section download-band" id="download"><div><span className="kicker">PREPARE-SE PARA ENTRAR</span><h2>Seu próximo capítulo<br /><em>está a um download.</em></h2></div><button className="button primary" onClick={() => notify('Download do launcher iniciado.')}>BAIXAR LAUNCHER <Download size={16} /></button></section>
     </main>}
     <footer><div className="footer-brand"><img src={logoPath} alt="Dyfus Impact" /><div><strong>DYFUS <em>IMPACT</em></strong><small>SUA PRÓXIMA AVENTURA COMEÇA AQUI.</small></div></div><div className="footer-links"><span>SUPORTE</span><span>DISCORD</span><span>TERMOS</span><span>REGRAS</span></div><small>© 2026 DYFUS IMPACT. TODOS OS DIREITOS RESERVADOS.</small></footer>
-    {modal && <Modal type={modal} close={() => setModal(null)} notify={notify} />}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}{toast && <div className="toast"><ShieldCheck size={18} /> {toast}</div>}
+    {modal && <Modal type={modal} close={() => setModal(null)} notify={notify} onAuthenticated={() => setLoggedIn(true)} />}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}{toast && <div className="toast"><ShieldCheck size={18} /> {toast}</div>}
   </div>;
 }
 
@@ -97,6 +117,35 @@ function Header({ onMenu, menuOpen, jump, openLogin, openSignup }) { return <hea
 
 function Page({ page, jump, notify }) {
   const [selectedNews, setSelectedNews] = useState(null);
+  const [rankFilter, setRankFilter] = useState('GERAL');
+  const rankEntries = rankBoards[rankFilter];
+  useEffect(() => {
+    if (page !== 'rank') return undefined;
+    const tabs = document.querySelectorAll('.full-panel .rank-tabs span');
+    const rows = document.querySelectorAll('.full-panel .rank-row');
+    const selectRank = (filter) => {
+      setRankFilter(filter);
+      document.querySelector('.full-panel')?.style.setProperty('--rank-cover', `url(${rankImages[filter]})`);
+      rankBoards[filter].forEach(([position, name, score], index) => {
+        const row = rows[index];
+        if (!row) return;
+        row.querySelector('b').textContent = position;
+        row.querySelector('.rank-avatar').textContent = name[0];
+        row.querySelector('strong').textContent = name;
+        row.querySelector('small').textContent = `${score} XP`;
+      });
+      tabs.forEach((tab) => tab.classList.toggle('selected', tab.textContent === filter));
+    };
+    const handlers = [...tabs].map((tab) => {
+      tab.setAttribute('role', 'button');
+      tab.setAttribute('tabindex', '0');
+      const handler = () => selectRank(tab.textContent);
+      tab.addEventListener('click', handler);
+      return [tab, handler];
+    });
+    return () => handlers.forEach(([tab, handler]) => tab.removeEventListener('click', handler));
+    selectRank(rankFilter);
+  }, [page, rankFilter]);
   const pageData = {
     news: { kicker: 'DO DIÁRIO DE BORDO', title: <>Notícias <em>Impact.</em></>, intro: 'Atualizações, eventos e histórias que movimentam o mundo Dyfus Impact.' },
     store: { kicker: 'FORJE SUA JORNADA', title: <>Loja <em>Impact.</em></>, intro: 'Itens, VIP e recursos para levar sua aventura ainda mais longe.' },
@@ -111,6 +160,24 @@ function NewsReader({ article, close }) {
   const [liked, setLiked] = useState(false);
   return <div className="modal-backdrop" onClick={close}><article className="news-reader" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={close}><X size={18} /></button><div className="reader-image" style={{ backgroundImage: `url(${article.image})` }}><span>{article.category}</span></div><div className="reader-content"><small>{article.date}</small><h2>{article.title}</h2><p>{article.text}</p><p>O mundo Impact continua em movimento. Prepare seu grupo, acompanhe os eventos e descubra tudo o que esta nova fase reserva para sua jornada.</p><div className="reader-actions"><button className={`button ${liked ? 'liked' : 'outline'}`} disabled={liked} onClick={() => setLiked(true)}>{liked ? '♥ CURTIDO' : '♡ CURTIR NOTÍCIA'}</button><button className="button outline" onClick={close}>FECHAR NOTÍCIA</button></div></div></article></div>;
 }
-function Modal({ type, close, notify }) { const login = type === 'login'; return <div className="modal-backdrop" onClick={close}><div className="modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={close}><X size={18} /></button><span className="kicker">{login ? 'BEM-VINDO DE VOLTA' : 'JUNTE-SE À LENDA'}</span><h2>{login ? 'Entrar no <em>Impact.</em>' : 'Crie sua <em>conta.</em>'}</h2><p>{login ? 'Acesse sua conta e continue sua jornada.' : 'Seu mundo está esperando por você.'}</p>{!login && <label>LOGIN<input placeholder="Escolha seu nome de aventureiro" /></label>}<label>E-MAIL<input type="email" placeholder="voce@email.com" /></label><label>SENHA<input type="password" placeholder="Sua senha secreta" /></label>{!login && <label>CONFIRMAR SENHA<input type="password" placeholder="Repita sua senha" /></label>}<button className="button primary full" onClick={() => { close(); notify(login ? 'Login demonstrativo realizado.' : 'Conta demonstrativa criada.') }}>{login ? 'ENTRAR NO MUNDO' : 'CRIAR MINHA CONTA'} <ArrowRight size={16} /></button>{login && <button className="modal-helper" onClick={() => notify('Fluxo de recuperação preparado para integração.')}>Esqueci minha senha</button>}</div></div>; }
+function Modal({ type, close, notify, onAuthenticated }) {
+  const login = type === 'login';
+  const [recover, setRecover] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const submitLogin = () => {
+    if (loginEmail.trim().toLowerCase() !== testAccount.email || loginPassword !== testAccount.password) {
+      notify('E-mail ou senha inválidos.');
+      return;
+    }
+    onAuthenticated();
+    close();
+    notify('Login realizado com sucesso.');
+  };
+
+  if (login && recover) return <div className="modal-backdrop" onClick={close}><div className="modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={close} aria-label="Fechar"><X size={18} /></button><div className="modal-brand"><img src={logoPath} alt="Dyfus Impact" /><span>PORTAL DO AVENTUREIRO</span></div><span className="kicker">RECUPERE SUA CONTA</span><h2>Nova <em>senha.</em></h2><p>Confirme seus dados para atualizar o acesso ao seu personagem.</p><label>E-MAIL<input type="email" placeholder="voce@email.com" /></label><label>PALAVRA SECRETA<input type="password" placeholder="Sua palavra secreta" /></label><label>NOVA SENHA<input type="password" placeholder="Digite sua nova senha" /></label><button className="button primary full" onClick={() => { close(); notify('Solicitação de alteração enviada.') }}>ALTERAR MINHA SENHA <ArrowRight size={16} /></button><button className="modal-helper" onClick={() => setRecover(false)}>Voltar para entrar</button></div></div>;
+
+  return <div className="modal-backdrop" onClick={close}><div className="modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={close} aria-label="Fechar"><X size={18} /></button><div className="modal-brand"><img src={logoPath} alt="Dyfus Impact" /><span>PORTAL DO AVENTUREIRO</span></div><span className="kicker">{login ? 'BEM-VINDO DE VOLTA' : 'JUNTE-SE À LENDA'}</span><h2>{login ? <>Entrar no <em>Impact.</em></> : <>Crie sua <em>conta.</em></>}</h2><p>{login ? 'Acesse sua conta e continue sua jornada.' : 'Seu mundo está esperando por você.'}</p>{!login && <label>LOGIN<input placeholder="Escolha seu nome de aventureiro" /></label>}<label>E-MAIL<input type="email" placeholder="voce@email.com" value={login ? loginEmail : undefined} onChange={login ? (event) => setLoginEmail(event.target.value) : undefined} /></label>{!login && <><label>PALAVRA SECRETA<select defaultValue=""><option value="" disabled>Escolha uma pergunta de segurança</option><option>Qual era o nome do seu primeiro personagem?</option><option>Qual é o nome do seu lugar favorito?</option><option>Qual era o apelido da sua infância?</option><option>Qual é o nome do seu jogo favorito?</option><option>Qual foi sua primeira guilda?</option></select></label><label>RESPOSTA SECRETA<input placeholder="Digite sua resposta secreta" /></label></>}<label>SENHA<input type="password" placeholder="Sua senha secreta" value={login ? loginPassword : undefined} onChange={login ? (event) => setLoginPassword(event.target.value) : undefined} /></label>{!login && <label>CONFIRMAR SENHA<input type="password" placeholder="Repita sua senha" /></label>}<button className="button primary full" onClick={login ? submitLogin : () => { onAuthenticated(); close(); notify('Conta demonstrativa criada.') }}>{login ? 'ENTRAR NO MUNDO' : 'CRIAR MINHA CONTA'} <ArrowRight size={16} /></button>{login && <button className="modal-helper" onClick={() => setRecover(true)}>Esqueci minha senha</button>}</div></div>;
+}
 
 createRoot(document.getElementById('root')).render(<App />);
