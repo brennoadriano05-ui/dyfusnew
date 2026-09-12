@@ -61,6 +61,34 @@ function App() {
   useEffect(() => { const timer = setTimeout(() => setLoading(false), 1800); return () => clearTimeout(timer); }, []);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 2600); return () => clearTimeout(timer); }, [toast]);
   useEffect(() => { const symbol = document.querySelector('.version-visual .visual-symbol'); if (symbol) symbol.dataset.version = activeVersion; }, [activeVersion]);
+  useLayoutEffect(() => {
+    if (loading || page !== 'home') return undefined;
+    const tabs = document.querySelectorAll('.ranking .rank-tabs span');
+    const rows = document.querySelectorAll('.ranking .rank-row');
+    const homeBoards = { GERAL: rankBoards.GERAL, PVP: rankBoards.PVP, GUILDAS: rankBoards.GUILDAS };
+    const selectBoard = (boardName) => {
+      const entries = homeBoards[boardName];
+      entries.slice(0, rows.length).forEach(([position, name, score, className = 'Aventureiro', , , avatar = name[0]], index) => {
+        const row = rows[index];
+        if (!row) return;
+        row.querySelector('b').textContent = position;
+        row.querySelector('strong').textContent = name;
+        row.querySelector('small').textContent = `${score} XP`;
+        const avatarElement = row.querySelector('.rank-avatar');
+        const image = getAvatarImage(className);
+        avatarElement.textContent = image ? '' : avatar;
+        avatarElement.style.backgroundImage = image ? `url(${image})` : '';
+      });
+      tabs.forEach((tab) => tab.classList.toggle('selected', tab.textContent === boardName));
+    };
+    const handlers = [...tabs].map((tab) => {
+      const handler = () => selectBoard(tab.textContent);
+      tab.addEventListener('click', handler);
+      return [tab, handler];
+    });
+    selectBoard('GERAL');
+    return () => handlers.forEach(([tab, handler]) => tab.removeEventListener('click', handler));
+  }, [loading, page]);
 
   const notify = (message) => {
     if (message === 'Notícia aberta em modo de leitura.') {
