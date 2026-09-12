@@ -17,7 +17,7 @@ import prizeShowcaseImage from '../imagens/images.jfif';
 
 const versions = [
   { id: '251', label: 'DYFUS 2.51', name: 'Dofus Impact', tag: 'A ERA PRINCIPAL', status: 'ONLINE', players: '1.248', desc: 'A experiência completa, com progressão intensa, eventos semanais e uma economia viva.' },
-  { id: 'retro', label: 'RETRO 1.29', name: 'Impact Retro', tag: 'CLÁSSICO', status: 'ONLINE', players: '672', desc: 'A nostalgia do clássico com sistemas modernos, balanceamento próprio e comunidade fiel.' },
+  { id: 'retro', label: 'RETRO 1.29', name: 'Impact Retro', tag: 'EM BREVE', status: 'EM BREVE', players: '—', desc: 'A nostalgia do clássico com sistemas modernos, balanceamento próprio e comunidade fiel.' },
   { id: '36', label: 'DYFUS 3.6', name: 'Impact 3.6', tag: 'EM BREVE', status: 'EM BREVE', players: '—', desc: 'Uma nova fronteira está sendo forjada. Acompanhe o desenvolvimento desta versão.' }
 ];
 
