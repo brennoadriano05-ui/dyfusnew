@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+function PrizeHistory({ entries }) { return <div className="prize-history"><div className="history-heading"><div><span className="kicker">HISTÓRICO DE PRÊMIOS</span><h2>Prêmios <em>entregues.</em></h2></div><small>{entries.length} GIROS REGISTRADOS</small></div>{entries.length === 0 ? <p className="history-empty">Nenhum prêmio saiu ainda. Seja o primeiro a girar.</p> : <div className="history-list">{entries.map((entry, index) => <div className="history-row" key={`${entry.prize}-${index}`}><b>#{String(entries.length - index).padStart(2, '0')}</b><span className="history-icon"><Gift size={16} /></span><strong>{entry.prize}</strong><small>{entry.time}</small><em>ENTREGUE</em></div>)}</div>}</div>; }
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowRight, ChevronDown, CircleUserRound, Download, Gift, Menu, MessageCircle, Package, Play, ShieldCheck, ShoppingBag, Sparkles, Trophy, UserPlus, X, Zap } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleUserRound, Download, Gift, LogIn, Menu, MessageCircle, Package, Play, Settings, ShieldCheck, ShoppingBag, Sparkles, Trophy, UserPlus, X, Zap } from 'lucide-react';
 import './styles.css';
 import './pages.css';
 import './reader.css';
@@ -12,6 +13,7 @@ import rankPvpImage from '../imagens/rank/rankpvp.png';
 import rankGuildaImage from '../imagens/rank/rankguilda.jpg';
 import rankSonhoImage from '../imagens/rank/ranksonho.jpg';
 import rankVotoImage from '../imagens/rank/rankvoto.jpg';
+import prizeShowcaseImage from '../imagens/images.jfif';
 
 const versions = [
   { id: '251', label: 'DYFUS 2.51', name: 'Dofus Impact', tag: 'A ERA PRINCIPAL', status: 'ONLINE', players: '1.248', desc: 'A experiência completa, com progressão intensa, eventos semanais e uma economia viva.' },
@@ -32,12 +34,14 @@ const products = [
 ];
 
 const rankBoards = {
-  GERAL: [['01', 'NexuS', '42.890'], ['02', 'Avelorn', '39.420'], ['03', 'Khal Drogo', '36.115'], ['04', 'Lunara', '33.870'], ['05', 'Mordred', '31.420'], ['06', 'Elyra', '29.760']],
-  PVP: [['01', 'Khal Drogo', '18.640'], ['02', 'NexuS', '17.920'], ['03', 'Lunara', '16.870'], ['04', 'Avelorn', '15.430'], ['05', 'Mordred', '14.980'], ['06', 'Elyra', '13.760']],
+  GERAL: [['01', 'NexuS', '42.890', 'Iop', '200', 'Os Vaillants', 'N'], ['02', 'Avelorn', '39.420', 'Cra', '199', 'Sakura', 'A'], ['03', 'Khal Drogo', '36.115', 'Sacrier', '198', 'Impact Prime', 'K'], ['04', 'Lunara', '33.870', 'Eniripsa', '197', 'Lendas', 'L'], ['05', 'Mordred', '31.420', 'Sram', '196', 'Ordem Solar', 'M'], ['06', 'Elyra', '29.760', 'Sadida', '195', 'Aurora', 'E']],
+  PVP: [['01', 'Khal Drogo', '18.640', 'Sacrier', '198', 'Impact Prime', 'K'], ['02', 'NexuS', '17.920', 'Iop', '200', 'Os Vaillants', 'N'], ['03', 'Lunara', '16.870', 'Eniripsa', '197', 'Lendas', 'L'], ['04', 'Avelorn', '15.430', 'Cra', '199', 'Sakura', 'A'], ['05', 'Mordred', '14.980', 'Sram', '196', 'Ordem Solar', 'M'], ['06', 'Elyra', '13.760', 'Sadida', '195', 'Aurora', 'E']],
   GUILDAS: [['01', 'Os Vaillants', '27.255'], ['02', 'Sakura', '21.969'], ['03', 'Impact Prime', '19.840'], ['04', 'Lendas', '18.420'], ['05', 'Ordem Solar', '16.910'], ['06', 'Aurora', '15.670']],
-  KOLIZEU: [['01', 'Avelorn', '12.890'], ['02', 'NexuS', '12.420'], ['03', 'Khal Drogo', '11.975'], ['04', 'Lunara', '10.860'], ['05', 'Mordred', '10.210'], ['06', 'Elyra', '9.740']]
+  KOLIZEU: [['01', 'Avelorn', '12.890', 'Cra', '199', 'Sakura', 'A'], ['02', 'NexuS', '12.420', 'Iop', '200', 'Os Vaillants', 'N'], ['03', 'Khal Drogo', '11.975', 'Sacrier', '198', 'Impact Prime', 'K'], ['04', 'Lunara', '10.860', 'Eniripsa', '197', 'Lendas', 'L'], ['05', 'Mordred', '10.210', 'Sram', '196', 'Ordem Solar', 'M'], ['06', 'Elyra', '9.740', 'Sadida', '195', 'Aurora', 'E']]
 };
 const rankImages = { GERAL: rankGeralImage, PVP: rankPvpImage, GUILDAS: rankGuildaImage, KOLIZEU: rankSonhoImage, VOTO: rankVotoImage };
+const avatarImages = import.meta.glob('../imagens/avatar/*.jpg', { eager: true, query: '?url', import: 'default' });
+const getAvatarImage = (className) => avatarImages[`../imagens/avatar/${className.toLowerCase()}.jpg`];
 
 const testAccount = { email: 'teste@dyfus.com', password: 'Impact@123' };
 
@@ -47,10 +51,12 @@ function App() {
   const [activeVersion, setActiveVersion] = useState('251');
   const [menuOpen, setMenuOpen] = useState(false);
   const [modal, setModal] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(() => localStorage.getItem('dyfus_logged_in') === 'true');
   const [toast, setToast] = useState('');
   const [liked, setLiked] = useState([]);
   const [selectedNews, setSelectedNews] = useState(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
 
   useEffect(() => { const timer = setTimeout(() => setLoading(false), 1800); return () => clearTimeout(timer); }, []);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 2600); return () => clearTimeout(timer); }, [toast]);
@@ -81,7 +87,7 @@ function App() {
   if (loading) return <Loading />;
   return <div className="app">
     <div className="ambient ambient-one" /><div className="ambient ambient-two" />
-    <Header onMenu={() => setMenuOpen(!menuOpen)} menuOpen={menuOpen} jump={jump} openLogin={() => setModal('login')} openSignup={() => setModal('signup')} />
+    <Header onMenu={() => setMenuOpen(!menuOpen)} menuOpen={menuOpen} jump={jump} openLogin={() => setModal('login')} openSignup={() => setModal('signup')} loggedIn={loggedIn} accountMenuOpen={accountMenuOpen} setAccountMenuOpen={setAccountMenuOpen} openSettings={() => setAccountSettingsOpen(true)} logout={() => { localStorage.removeItem('dyfus_logged_in'); setLoggedIn(false); setAccountMenuOpen(false); notify('Você saiu da conta.'); }} />
     {page !== 'home' ? <Page page={page} jump={jump} notify={notify} /> : <main>
       <section className="hero" id="home">
         <div className="hero-copy reveal">
@@ -108,31 +114,74 @@ function App() {
       <section className="section download-band" id="download"><div><span className="kicker">PREPARE-SE PARA ENTRAR</span><h2>Seu próximo capítulo<br /><em>está a um download.</em></h2></div><button className="button primary" onClick={() => notify('Download do launcher iniciado.')}>BAIXAR LAUNCHER <Download size={16} /></button></section>
     </main>}
     <footer><div className="footer-brand"><img src={logoPath} alt="Dyfus Impact" /><div><strong>DYFUS <em>IMPACT</em></strong><small>SUA PRÓXIMA AVENTURA COMEÇA AQUI.</small></div></div><div className="footer-links"><span>SUPORTE</span><span>DISCORD</span><span>TERMOS</span><span>REGRAS</span></div><small>© 2026 DYFUS IMPACT. TODOS OS DIREITOS RESERVADOS.</small></footer>
-    {modal && <Modal type={modal} close={() => setModal(null)} notify={notify} onAuthenticated={() => setLoggedIn(true)} />}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}{toast && <div className="toast"><ShieldCheck size={18} /> {toast}</div>}
+    {modal && <Modal type={modal} close={() => setModal(null)} notify={notify} onAuthenticated={() => { localStorage.setItem('dyfus_logged_in', 'true'); setLoggedIn(true); }} />}{accountSettingsOpen && <AccountSettings close={() => setAccountSettingsOpen(false)} notify={notify} />}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}{toast && <div className="toast"><ShieldCheck size={18} /> {toast}</div>}
   </div>;
 }
 
 function Loading() { return <div className="loading-screen"><img className="loading-logo" src={logoPath} alt="Dyfus Impact" /><p>CARREGANDO SEU PRÓXIMO DESTINO...</p><div className="loading-bar"><span /></div><small>ESTABELECENDO CONEXÃO</small></div>; }
-function Header({ onMenu, menuOpen, jump, openLogin, openSignup }) { return <header><button className="brand" onClick={() => jump('home')}><img src={logoPath} alt="Dyfus Impact" /><div><small>PRIVATE MMORPG</small></div></button><nav className={menuOpen ? 'open' : ''}>{[['HOME','home'],['NOTÍCIAS','news'],['LOJA','store'],['RANK','rank'],['VOTO','vote'],['DOWNLOAD','download']].map(([label,id]) => <button key={id} onClick={() => jump(id)}>{label}</button>)}</nav><div className="header-actions"><button className="login-link" onClick={openLogin}>ENTRAR</button><button className="button small" onClick={openSignup}><UserPlus size={14} /> CRIAR CONTA</button></div><button className="menu-toggle" onClick={onMenu}>{menuOpen ? <X /> : <Menu />}</button></header>; }
+function AccountSettings({ close, notify }) { const [selectedAvatar, setSelectedAvatar] = useState('Iop'); const [avatarPickerOpen, setAvatarPickerOpen] = useState(false); const [currentPassword, setCurrentPassword] = useState(''); const [newPassword, setNewPassword] = useState(''); const [secretAnswer, setSecretAnswer] = useState(''); const [nickname, setNickname] = useState('NexuS'); const [email, setEmail] = useState('teste@dyfus.com'); const avatarNames = Object.keys(avatarImages).map((path) => path.split('/').pop().replace('.jpg', '')).sort(); const dataChanged = nickname !== 'NexuS' || email !== 'teste@dyfus.com' || newPassword !== '' || secretAnswer !== ''; const saveSettings = () => { if (dataChanged && currentPassword !== testAccount.password) { notify('Confirme a senha atual para alterar os dados.'); return; } close(); notify(selectedAvatar !== 'Iop' && !dataChanged ? 'Avatar alterado com sucesso.' : 'Configurações salvas.'); }; return <div className="modal-backdrop" onClick={close}><section className="account-settings" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={close} aria-label="Fechar"><X size={18} /></button><div className="modal-brand"><img src={logoPath} alt="Dyfus Impact" /><span>CONFIGURAÇÃO DA CONTA</span></div><span className="kicker">CONTA DO AVENTUREIRO</span><h2>Suas <em>configurações.</em></h2><p>Gerencie os dados e preferências da sua conta Impact.</p><div className="settings-section"><h3>AVATAR DA CONTA</h3><div className="avatar-setting"><img src={getAvatarImage(selectedAvatar)} alt={`Avatar ${selectedAvatar}`} /><button className="button outline" onClick={() => setAvatarPickerOpen(!avatarPickerOpen)}>ALTERAR AVATAR <ChevronDown size={15} /></button></div>{avatarPickerOpen && <div className="avatar-picker">{avatarNames.map((avatarName) => <button className={selectedAvatar === avatarName ? 'selected' : ''} key={avatarName} onClick={() => { setSelectedAvatar(avatarName); setAvatarPickerOpen(false); }}><img src={getAvatarImage(avatarName)} alt={avatarName} /><span>{avatarName}</span></button>)}</div>}</div><div className="settings-section"><h3>DADOS DA CONTA</h3><label>TROCAR APELIDO<input value={nickname} onChange={(event) => setNickname(event.target.value)} /></label><label>TROCAR E-MAIL<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label></div><div className="settings-section"><h3>SEGURANÇA</h3><label>TROCAR SENHA<input type="password" placeholder="Digite a nova senha" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label><label>TROCAR RESPOSTA SECRETA<input type="password" placeholder="Digite a nova resposta secreta" value={secretAnswer} onChange={(event) => setSecretAnswer(event.target.value)} /></label>{dataChanged && <label className="current-password">SENHA ATUAL<input type="password" placeholder="Confirme sua senha atual" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>}</div><button className="button primary full" onClick={saveSettings}>SALVAR ALTERAÇÕES <ArrowRight size={16} /></button></section></div>; }
+function Header({ onMenu, menuOpen, jump, openLogin, openSignup, loggedIn, accountMenuOpen, setAccountMenuOpen, openSettings, logout }) { return <header><button className="brand" onClick={() => jump('home')}><img src={logoPath} alt="Dyfus Impact" /><div><small>PRIVATE MMORPG</small></div></button><nav className={menuOpen ? 'open' : ''}>{[['HOME','home'],['NOTÍCIAS','news'],['LOJA','store'],['RANK','rank'],['VOTO','vote'],['DOWNLOAD','download']].map(([label,id]) => <button key={id} onClick={() => jump(id)}>{label}</button>)}</nav><div className="header-actions">{loggedIn ? <div className="account-area"><button className="account-chip" onClick={() => setAccountMenuOpen(!accountMenuOpen)}><img src={getAvatarImage('Iop')} alt="Avatar da conta conectada" /><span><b>NexuS</b><small>CONECTADO</small></span><ChevronDown size={14} /></button>{accountMenuOpen && <div className="account-menu"><div className="account-summary"><strong>NexuS</strong><span>teste@dyfus.com</span></div><div className="account-info"><span><b>STATUS</b>VIP</span><span><b>OGRINES</b>2.500</span><span><b>PERSONAGENS</b>3</span></div><button onClick={openSettings}><Settings size={15} /> CONFIGURAÇÃO</button><button onClick={logout}><LogIn size={15} /> SAIR</button></div>}</div> : <><button className="login-link" onClick={openLogin}><LogIn size={16} /> CONECTE-SE</button><button className="button small" onClick={openSignup}><UserPlus size={14} /> CRIAR CONTA</button></>}</div><button className="menu-toggle" onClick={onMenu}>{menuOpen ? <X /> : <Menu />}</button></header>; }
+
+function LegacyRoulette({ prizes, freeSpins, ogrines, spinResult, spinning, spinWheel }) { return null; }
+function Roulette({ prizes, freeSpins, ogrines, spinResult, spinning, activePrizeIndex, spinWheel }) { return <div className="roulette-page"><div className="roulette-board"><div className="roulette-title"><span>ROULETA DE RECOMPENSAS</span><h2>CONFIRA OS <em>PRÊMIOS</em></h2><p>1 giro a cada 10 votos ou compre por 250 Ogrines</p></div><div className="prize-board">{prizes.map((prize, index) => <div className={`prize-tile ${index === 2 ? 'featured' : ''} ${spinning && activePrizeIndex === index ? 'prize-active' : ''} ${!spinning && activePrizeIndex === index ? 'prize-winner' : ''}`} key={prize}><span>PRÊMIO {String(index + 1).padStart(2, '0')}</span><strong>{prize}</strong><small>{index === 0 ? 'OGRINES' : index === 2 ? 'VIP IMPACT' : 'RECOMPENSA'}</small></div>)}<div className="roulette-result ${spinning ? 'spinning' : ''}"><img src={prizeShowcaseImage} alt="Todos os prêmios da roleta" /><div className="roulette-result-content"><Gift size={25} /><strong>{spinResult}</strong><button className="button primary" disabled={spinning || freeSpins < 1} onClick={() => spinWheel()}>GIRAR GRÁTIS ({freeSpins})</button></div></div></div><div className="wheel-actions"><button className="button outline" disabled={spinning || ogrines < 250} onClick={() => spinWheel(true)}>COMPRAR GIRO · 250 OGRINES <Sparkles size={15} /></button></div><div className="wheel-balance"><span>SEU SALDO <b>{ogrines.toLocaleString('pt-BR')} OGRINES</b></span><span>PRÓXIMO GIRO GRÁTIS <b>10 VOTOS</b></span></div></div><div className="vote-step panel"><span className="kicker">COMO FUNCIONA</span><h2>Vote. Gire.<br /><em>Ganhe recompensas.</em></h2><p>Participe das votações do servidor e acumule giros para concorrer a prêmios especiais.</p>{prizes.map((prize, index) => <div className="prize-line" key={prize}><span>0{index + 1}</span><strong>{prize}</strong><small>PRÊMIO</small></div>)}</div></div>; }
 
 function Page({ page, jump, notify }) {
   const [selectedNews, setSelectedNews] = useState(null);
   const [rankFilter, setRankFilter] = useState('GERAL');
+  const [freeSpins, setFreeSpins] = useState(1);
+  const [ogrines, setOgrines] = useState(2500);
+  const [spinResult, setSpinResult] = useState('Gire para descobrir seu prêmio');
+  const [spinning, setSpinning] = useState(false);
+  const [activePrizeIndex, setActivePrizeIndex] = useState(-1);
+  const [prizeHistory, setPrizeHistory] = useState([]);
+  const spinTimer = useRef(null);
+  const prizes = ['1.000 Ogrines', 'Baú do Aventureiro', 'VIP por 3 dias', '100.000 Kamas', 'Chave de Calabouço', 'Título exclusivo', 'Passe de Batalha', 'Emote raro'];
+    const spinWheel = (paid = false) => {
+    if (spinning || (paid ? ogrines < 250 : freeSpins < 1)) return;
+    setSpinning(true);
+      const winner = Math.floor(Math.random() * prizes.length);
+      let current = 0;
+      setActivePrizeIndex(0);
+    if (paid) setOgrines((value) => value - 250); else setFreeSpins((value) => value - 1);
+      spinTimer.current = setInterval(() => {
+        current += 1;
+        setActivePrizeIndex(current % prizes.length);
+        if (current >= prizes.length * 2 + winner) {
+          clearInterval(spinTimer.current);
+          setActivePrizeIndex(winner);
+          setSpinResult(prizes[winner]);
+          setPrizeHistory((entries) => [{ prize: prizes[winner], time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }, ...entries]);
+          setSpinning(false);
+        }
+      }, 150);
+  };
   const rankEntries = rankBoards[rankFilter];
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (page !== 'rank') return undefined;
     const tabs = document.querySelectorAll('.full-panel .rank-tabs span');
     const rows = document.querySelectorAll('.full-panel .rank-row');
     const selectRank = (filter) => {
       setRankFilter(filter);
       document.querySelector('.full-panel')?.style.setProperty('--rank-cover', `url(${rankImages[filter]})`);
-      rankBoards[filter].forEach(([position, name, score], index) => {
+      rankBoards[filter].forEach(([position, name, score, className = 'Aventureiro', level = '—', guild = 'Sem guilda', avatar = name[0]], index) => {
         const row = rows[index];
         if (!row) return;
         row.querySelector('b').textContent = position;
-        row.querySelector('.rank-avatar').textContent = name[0];
+        const avatarElement = row.querySelector('.rank-avatar');
+        const avatarImage = getAvatarImage(className);
+        avatarElement.textContent = avatarImage ? '' : avatar;
+        avatarElement.style.backgroundImage = avatarImage ? `url(${avatarImage})` : '';
+        avatarElement.style.backgroundSize = 'cover';
+        avatarElement.style.backgroundPosition = 'center';
         row.querySelector('strong').textContent = name;
         row.querySelector('small').textContent = `${score} XP`;
+        let details = row.querySelector('.rank-details');
+        if (!details) {
+          details = document.createElement('div');
+          details.className = 'rank-details';
+          row.append(details);
+        }
+        details.innerHTML = `<span><b>CLASSE</b>${className}</span><span><b>NÍVEL</b>${level}</span><span><b>GUILDA</b>${guild}</span>`;
       });
       tabs.forEach((tab) => tab.classList.toggle('selected', tab.textContent === filter));
     };
@@ -143,9 +192,19 @@ function Page({ page, jump, notify }) {
       tab.addEventListener('click', handler);
       return [tab, handler];
     });
-    return () => handlers.forEach(([tab, handler]) => tab.removeEventListener('click', handler));
     selectRank(rankFilter);
+    return () => handlers.forEach(([tab, handler]) => tab.removeEventListener('click', handler));
   }, [page, rankFilter]);
+  useEffect(() => {
+    if (page !== 'vote') return undefined;
+    const host = document.createElement('div');
+    host.className = 'roulette-host';
+    const innerPage = document.querySelector('.inner-page');
+    innerPage?.appendChild(host);
+    const root = createRoot(host);
+    root.render(<><Roulette prizes={prizes} freeSpins={freeSpins} ogrines={ogrines} spinResult={spinResult} spinning={spinning} activePrizeIndex={activePrizeIndex} spinWheel={spinWheel} /><PrizeHistory entries={prizeHistory} /></>);
+    return () => { root.unmount(); host.remove(); };
+  }, [page, freeSpins, ogrines, spinResult, spinning, activePrizeIndex, prizeHistory]);
   const pageData = {
     news: { kicker: 'DO DIÁRIO DE BORDO', title: <>Notícias <em>Impact.</em></>, intro: 'Atualizações, eventos e histórias que movimentam o mundo Dyfus Impact.' },
     store: { kicker: 'FORJE SUA JORNADA', title: <>Loja <em>Impact.</em></>, intro: 'Itens, VIP e recursos para levar sua aventura ainda mais longe.' },
@@ -153,6 +212,7 @@ function Page({ page, jump, notify }) {
     vote: { kicker: 'RECOMPENSE SUA PRESENÇA', title: <>Vote e <em>ganhe.</em></>, intro: 'Ajude o servidor a crescer e receba recompensas exclusivas.' },
     download: { kicker: 'PREPARE-SE PARA ENTRAR', title: <>Baixe o <em>launcher.</em></>, intro: 'Escolha sua versão e entre no mundo Dyfus Impact.' }
   }[page];
+  const voteContent = page === 'vote' ? <Roulette prizes={prizes} freeSpins={freeSpins} ogrines={ogrines} spinResult={spinResult} spinning={spinning} activePrizeIndex={activePrizeIndex} spinWheel={spinWheel} /> : null;
   return <main className="inner-page"><section className="page-hero"><span className="kicker">{pageData.kicker}</span><h1>{pageData.title}</h1><p>{pageData.intro}</p><button className="text-button" onClick={() => jump('home')}>← VOLTAR PARA HOME</button></section>{page === 'news' && <div className="page-news news-grid">{news.map((item) => <article className="news-card" key={item.title}><div className="news-image" style={{ backgroundImage: `url(${item.image})` }}><span>{item.category}</span></div><div className="news-content"><small>{item.date}</small><h3>{item.title}</h3><p>{item.text}</p><button className="text-button" onClick={() => setSelectedNews(item)}>LER NOTÍCIA <ArrowRight size={14} /></button></div></article>)}</div>}{page === 'store' && <div className="page-products product-grid">{products.concat(products).map(({ name, type, price, detail, icon: Icon }, index) => <article className="product-card" key={`${name}-${index}`}><div className="product-icon"><Icon size={28} /></div><span>{type}</span><h3>{name}</h3><p>{detail}</p><strong>{price}</strong><button className="button outline" onClick={() => notify(`${name} adicionado ao carrinho.`)}>ADICIONAR <ShoppingBag size={14} /></button></article>)}</div>}{page === 'rank' && <div className="full-panel panel"><div className="rank-tabs"><span className="selected">GERAL</span><span>PVP</span><span>GUILDAS</span><span>KOLIZEU</span></div>{[['01','NexuS','42.890'],['02','Avelorn','39.420'],['03','Khal Drogo','36.115'],['04','Lunara','33.870'],['05','Mordred','31.420'],['06','Elyra','29.760']].map(([position, name, score]) => <div className="rank-row" key={name}><b>{position}</b><span className={`rank-avatar rank-${position}`}>{name[0]}</span><strong>{name}</strong><small>{score} XP</small></div>)}</div>}{page === 'vote' && <div className="vote-page"><div className="vote-step panel"><div className="vote-orb"><Gift size={28} /></div><h2>Vote pelo <em>Impact.</em></h2><p>Acesse um dos sites abaixo, vote no servidor e retorne para receber seus pontos.</p>{['TOP-GAMES', 'SERVIDORES PRIVADOS', 'LISTA MMORPG'].map((site, index) => <button className="vote-link" key={site} onClick={() => notify(`Site de votação ${site} aberto.`)}><span>0{index + 1}</span><strong>{site}</strong><ArrowRight size={16} /></button>)}</div><div className="vote-step panel"><span className="kicker">SEU PROGRESSO</span><h2>7 <small>/ 10 votos</small></h2><p>Faltam 3 votos para desbloquear o próximo prêmio.</p><div className="progress"><span /></div><button className="button primary" onClick={() => notify('Recompensa resgatada em modo demonstrativo.')}>RESGATAR PRÊMIO <Gift size={15} /></button></div></div>}{page === 'download' && <div className="download-list">{versions.map((version) => <article className="download-card" key={version.id}><div><span className="kicker">{version.label}</span><h2>{version.name}</h2><p>{version.desc}</p><small>CLIENTE WINDOWS · 2.4 GB · VERSÃO {version.label}</small></div><button className="button primary" disabled={version.status === 'EM BREVE'} onClick={() => notify(`Download de ${version.label} iniciado.`)}><Download size={16} /> {version.status === 'EM BREVE' ? 'EM BREVE' : 'BAIXAR CLIENTE'}</button></article>)}</div>}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}</main>;
 }
 
