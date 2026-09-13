@@ -19,6 +19,7 @@ import roletaKamasImage from '../imagens/roleta/roletakamas.png';
 import roletaVipImage from '../imagens/roleta/roletavip.png';
 import roletaTituloImage from '../imagens/roleta/roletatitulo.png';
 import roletaOrnamentoImage from '../imagens/roleta/roletaornamento.png';
+import loginVideo from '../imagens/video/motionlogin.mp4';
 
 import vipImage from '../imagens/loja/vip.png';
 import vip4Image from '../imagens/loja/vip4.png';
@@ -158,7 +159,7 @@ function App() {
       <section className="section download-band" id="download"><div><span className="kicker">PREPARE-SE PARA ENTRAR</span><h2>Seu próximo capítulo<br /><em>está a um download.</em></h2></div><button className="button primary" onClick={() => notify('Download do launcher iniciado.')}>BAIXAR LAUNCHER <Download size={16} /></button></section>
     </main>}
     <footer><div className="footer-brand"><img src={logoPath} alt="Dyfus Impact" /><div><strong>DYFUS <em>IMPACT</em></strong><small>SUA PRÓXIMA AVENTURA COMEÇA AQUI.</small></div></div><div className="footer-links"><span>SUPORTE</span><span>DISCORD</span><span>TERMOS</span><span>REGRAS</span></div><small>© 2026 DYFUS IMPACT. TODOS OS DIREITOS RESERVADOS.</small></footer>
-    {modal && <Modal type={modal} close={() => setModal(null)} openSignup={() => setModal('signup')} notify={notify} onAuthenticated={() => { localStorage.setItem('dyfus_logged_in', 'true'); setLoggedIn(true); }} />}{accountSettingsOpen && <AccountSettings close={() => setAccountSettingsOpen(false)} notify={notify} />}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}{toast && <div className="toast"><ShieldCheck size={18} /> {toast}</div>}
+    {modal && <Modal type={modal} close={() => setModal(null)} openSignup={() => setModal('signup')} openLogin={() => setModal('login')} notify={notify} onAuthenticated={() => { if (modal === 'signup') { setTimeout(() => setModal('login'), 0); return; } localStorage.setItem('dyfus_logged_in', 'true'); setLoggedIn(true); }} />}{accountSettingsOpen && <AccountSettings close={() => setAccountSettingsOpen(false)} notify={notify} />}{selectedNews && <NewsReader article={selectedNews} close={() => setSelectedNews(null)} />}{toast && <div className="toast"><ShieldCheck size={18} /> {toast}</div>}
   </div>;
 }
 
@@ -281,11 +282,45 @@ function NewsReader({ article, close }) {
   const [liked, setLiked] = useState(false);
   return <div className="modal-backdrop" onClick={close}><article className="news-reader" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={close}><X size={18} /></button><div className="reader-image" style={{ backgroundImage: `url(${article.image})` }}><span>{article.category}</span></div><div className="reader-content"><small>{article.date}</small><h2>{article.title}</h2><p>{article.text}</p><p>O mundo Impact continua em movimento. Prepare seu grupo, acompanhe os eventos e descubra tudo o que esta nova fase reserva para sua jornada.</p><div className="reader-actions"><button className={`button ${liked ? 'liked' : 'outline'}`} disabled={liked} onClick={() => setLiked(true)}>{liked ? '♥ CURTIDO' : '♡ CURTIR NOTÍCIA'}</button><button className="button outline" onClick={close}>FECHAR NOTÍCIA</button></div></div></article></div>;
 }
-function Modal({ type, close, openSignup, notify, onAuthenticated }) {
+function Modal({ type, close, openSignup, openLogin, notify, onAuthenticated }) {
   const login = type === 'login';
   const [recover, setRecover] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  useEffect(() => {
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (!backdrop) return undefined;
+    backdrop.classList.add('login-backdrop');
+    return () => backdrop.classList.remove('login-backdrop');
+  }, [recover, login]);
+  useEffect(() => {
+    const modal = document.querySelector('.login-backdrop > .modal');
+    if (!modal) return undefined;
+    const video = document.createElement('video');
+    video.className = 'login-video';
+    video.src = loginVideo;
+    video.autoplay = true;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.setAttribute('aria-hidden', 'true');
+    modal.prepend(video);
+    return () => video.remove();
+  }, [login, recover]);
+  useEffect(() => {
+    const brand = document.querySelector('.login-backdrop .modal-brand');
+    if (!brand) return undefined;
+    const handleBrandClick = () => {
+      if (recover) setRecover(false);
+      else if (type === 'signup') openLogin();
+      else close();
+    };
+    brand.setAttribute('role', 'button');
+    brand.setAttribute('tabindex', '0');
+    brand.setAttribute('aria-label', recover ? 'Voltar para o login' : 'Voltar para a página inicial');
+    brand.addEventListener('click', handleBrandClick);
+    return () => brand.removeEventListener('click', handleBrandClick);
+  }, [close, login, openLogin, recover, type]);
   const submitLogin = () => {
     if (loginEmail.trim().toLowerCase() !== testAccount.email || loginPassword !== testAccount.password) {
       notify('E-mail ou senha inválidos.');
